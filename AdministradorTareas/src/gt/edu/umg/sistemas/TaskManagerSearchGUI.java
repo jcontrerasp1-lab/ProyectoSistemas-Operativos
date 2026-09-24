@@ -171,6 +171,7 @@ public class TaskManagerSearchGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Error al cerrar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    
   private void listarProcesos() {
         btnListar.setEnabled(false);
         btnListar.setText("Cargando...");
