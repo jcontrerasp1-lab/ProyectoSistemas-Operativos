@@ -88,31 +88,7 @@ public class TaskManagerSearchGUI extends JFrame {
             }
         });
 
-        txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) { filtrarTabla(); }
-            @Override
-            public void removeUpdate(DocumentEvent e) { filtrarTabla(); }
-            @Override
-            public void changedUpdate(DocumentEvent e) { filtrarTabla(); }
-        });
-
-        btnAbrir.addActionListener(e -> abrirApp(txtInputApp.getText().trim()));
-        btnListar.addActionListener(e -> listarProcesos());
         
-        btnCerrar.addActionListener(e -> {
-            String input = txtInputApp.getText().trim();
-            if (!input.isEmpty()) {
-                cerrarApp(input);
-                txtInputApp.setText(""); 
-            } else {
-                cerrarProcesoSeleccionado(); 
-            }
-        });
-        
-        listarProcesos();
-    }
-
     private void filtrarTabla() {
         String textoBusqueda = txtBuscar.getText();
         if (textoBusqueda.trim().length() == 0) {
