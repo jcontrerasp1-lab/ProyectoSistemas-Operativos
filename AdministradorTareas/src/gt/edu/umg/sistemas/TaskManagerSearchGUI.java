@@ -171,5 +171,58 @@ public class TaskManagerSearchGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Error al cerrar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+  private void listarProcesos() {
+        btnListar.setEnabled(false);
+        btnListar.setText("Cargando...");
 
-  
+        new Thread(() -> {
+            try {
+                Process proceso = Runtime.getRuntime().exec("tasklist /FO CSV /NH");
+                BufferedReader lector = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+                String linea;
+                
+                Object[][] nuevosDatos = new Object[1000][5];
+                int filasLeidas = 0;
+
+                while ((linea = lector.readLine()) != null) {
+                    if (linea.startsWith("\"") && linea.endsWith("\"")) {
+                        linea = linea.substring(1, linea.length() - 1);
+                    }
+                    
+                    String[] datosFila = linea.split("\",\"");
+                    
+                    if(datosFila.length == 5 && filasLeidas < nuevosDatos.length) {
+                        nuevosDatos[filasLeidas] = datosFila;
+                        filasLeidas++;
+                    }
+                }
+
+                final int totalFilas = filasLeidas;
+
+                SwingUtilities.invokeLater(() -> {
+                    modeloTabla.setRowCount(0);
+                    for (int i = 0; i < totalFilas; i++) {
+                        modeloTabla.addRow(nuevosDatos[i]);
+                    }
+                    btnListar.setEnabled(true);
+                    btnListar.setText("Actualizar Procesos");
+                    
+                    filtrarTabla();
+                });
+
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, "Fallo al listar: " + ex.getMessage());
+                    btnListar.setEnabled(true);
+                    btnListar.setText("Actualizar Procesos");
+                });
+            }
+        }).start();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new TaskManagerSearchGUI().setVisible(true);
+        });
+    }
+}
