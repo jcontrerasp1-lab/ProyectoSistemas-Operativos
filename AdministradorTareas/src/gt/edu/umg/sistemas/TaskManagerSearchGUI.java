@@ -97,5 +97,134 @@ public class TaskManagerSearchGUI extends JFrame {
         });
 
         btnAbrir.addActionListener(e -> abrirApp(txtInputApp.getText().trim()));
+        btnListar.addActionListener(e -> listarProcesos());
+        
+        btnCerrar.addActionListener(e -> {
+            String input = txtInputApp.getText().trim();
+            if (!input.isEmpty()) {
+                cerrarApp(input);
+                txtInputApp.setText(""); 
+            } else {
+                cerrarProcesoSeleccionado(); 
+            }
+        });
+        
+        listarProcesos();
+    }
+        
+    private void filtrarTabla() {
+        String textoBusqueda = txtBuscar.getText();
+        if (textoBusqueda.trim().length() == 0) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + textoBusqueda));
+        }
+    }
+
+    private void cerrarProcesoSeleccionado() {
+        int filaVista = tablaProcesos.getSelectedRow();
+        if (filaVista != -1) {
+            int filaModelo = tablaProcesos.convertRowIndexToModel(filaVista);
+            
+            String pid = (String) modeloTabla.getValueAt(filaModelo, 1);
+            String nombre = (String) modeloTabla.getValueAt(filaModelo, 0);
+            
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    this, 
+                    "¿Estás seguro de que deseas cerrar '" + nombre + "' (PID: " + pid + ")?", 
+                    "Confirmar cierre", 
+                    JOptionPane.YES_NO_OPTION);
+                    
+            if (confirmacion == JOptionPane.YES_OPTION) {
+                cerrarApp(pid);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Por favor, selecciona un proceso en la tabla primero.");
+        }
+    }
+
+    private void abrirApp(String nombreApp) {
+        if (nombreApp.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Ingresa el nombre de la aplicación.");
+            return;
+        }
+        try {
+            Runtime.getRuntime().exec(nombreApp);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al abrir: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void cerrarApp(String procesoOPid) {
+        try {
+            String flag = procesoOPid.matches("\\d+") ? "/PID" : "/IM";
+            String comando = "taskkill /F " + flag + " " + procesoOPid;
+            
+            Runtime.getRuntime().exec(comando);
+            
+            Timer timer = new Timer(1000, evt -> listarProcesos());
+            timer.setRepeats(false);
+            timer.start();
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al cerrar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+  private void listarProcesos() {
+        btnListar.setEnabled(false);
+        btnListar.setText("Cargando...");
+
+        new Thread(() -> {
+            try {
+                Process proceso = Runtime.getRuntime().exec("tasklist /FO CSV /NH");
+                BufferedReader lector = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+                String linea;
+                
+                Object[][] nuevosDatos = new Object[1000][5];
+                int filasLeidas = 0;
+
+                while ((linea = lector.readLine()) != null) {
+                    if (linea.startsWith("\"") && linea.endsWith("\"")) {
+                        linea = linea.substring(1, linea.length() - 1);
+                    }
+                    
+                    String[] datosFila = linea.split("\",\"");
+                    
+                    if(datosFila.length == 5 && filasLeidas < nuevosDatos.length) {
+                        nuevosDatos[filasLeidas] = datosFila;
+                        filasLeidas++;
+                    }
+                }
+
+                final int totalFilas = filasLeidas;
+
+                SwingUtilities.invokeLater(() -> {
+                    modeloTabla.setRowCount(0);
+                    for (int i = 0; i < totalFilas; i++) {
+                        modeloTabla.addRow(nuevosDatos[i]);
+                    }
+                    btnListar.setEnabled(true);
+                    btnListar.setText("Actualizar Procesos");
+                    
+                    filtrarTabla();
+                });
+
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, "Fallo al listar: " + ex.getMessage());
+                    btnListar.setEnabled(true);
+                    btnListar.setText("Actualizar Procesos");
+                });
+            }
+        }).start();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new TaskManagerSearchGUI().setVisible(true);
+        });
+    }
+}
 
     
